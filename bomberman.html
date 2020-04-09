@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Making your first Phaser 3 Game - Part 3</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            padding: 0;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="text/javascript">
+
+        var cursors;
+        let blackList = [{
+            x: 48,
+            y: 48
+        },
+        {
+            x: 48,
+            y: 80
+        },
+        {
+            x: 80,
+            y: 48
+        },
+        {
+            x: 688,
+            y: 560
+        },
+        {
+            x: 656,
+            y: 560
+        },
+        {
+            x: 688,
+            y: 528
+        }]
+
+        var config = {
+            type: Phaser.AUTO,
+            width: 23 * 32,
+            height: 19 * 32,
+            physics: {
+            default: 'arcade',
+            arcade: {
+                debug: false
+            }
+        },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var game = new Phaser.Game(config);
+
+        function preload() {
+            this.load.image('brick', 'assets/tile1.jpg');
+            this.load.image('ground', 'assets/ground.jpg');
+            this.load.image('destructibleBrick', 'assets/destructibleBrick.jpg');
+            this.load.image('bombardier', 'assets/bombardier.png');
+            this.load.spritesheet('bombardier1', 'assets/bombardier1Sprite.png', { frameWidth: 16, frameHeight: 26 });
+            this.load.spritesheet('bomba', 'assets/bomba.png', { frameWidth: 16, frameHeight: 21 });
+            this.load.image('bombardier2', 'assets/bombardier2.png');
+        }
+
+        function ifPutBlock() {
+            if (Math.floor(Math.random() * 10) > 7)
+                return true;
+            return false;
+        }
+
+        function checkBlackList(x,y){
+            for(let elem of blackList){
+                if(elem.x==(x*32+48)&&elem.y==(y*32+48))
+                    return false;
+                }
+            return true;
+        }
+
+        function create() {
+            this.add.image(23 * 32 / 2, 19 * 32 / 2, 'ground');
+
+            // this.add.image(48,48,'bombardier1');
+            // this.add.image(48,80,'bombardier2');
+
+            bricks = this.physics.add.staticGroup();
+
+            //generate destructible brick
+            for(i=0;i<=21;i++)
+                for(j=0;j<21;j++)
+                    {
+                        if(ifPutBlock()&&!(i%2!=0&&j%2!=0)&&checkBlackList(i,j))
+                            bricks.create(48+32*i,48+32*j,'destructibleBrick');
+                    }
+
+            //draw border
+            for (i = 0; i < 19; i++) {
+                //x
+                bricks.create(16, 16 + 32 * i, 'brick');
+                bricks.create(16 + 22 * 32, 16 + 32 * i, 'brick');
+            }
+
+            //draw border
+            for (i = 0; i < 23; i++) {
+                //y
+                bricks.create(16 + 32 * i, 16, 'brick');
+                bricks.create(16 + 32 * i, 16 + 18 * 32, 'brick');
+            }
+
+            for (i = 0; i <= 19; i += 2)
+                for (j = 0; j <= 23; j += 2)
+                bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, 'brick');
+
+            player = this.physics.add.sprite(48, 48, 'bombardier1');
+
+            bomba = this.physics.add.sprite(48,80,'bomba');
+
+            player.setCollideWorldBounds(true);
+
+            this.anims.create({
+                key: 'down',
+                frames: this.anims.generateFrameNumbers('bombardier1', { start: 0, end: 2 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'up',
+                frames: this.anims.generateFrameNumbers('bombardier1', { start: 3, end: 5 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'right',
+                frames: this.anims.generateFrameNumbers('bombardier1', { start: 6, end: 7 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'left',
+                frames: this.anims.generateFrameNumbers('bombardier1', { start: 8, end: 9 }),
+                frameRate: 10,
+                repeat: -1
+            });
+
+            this.anims.create({
+                key: 'bomb',
+                frames: this.anims.generateFrameNumbers('bomba', { start: 0, end: 2}),
+                frameRate: 2,
+                repeat: -1
+            });
+
+            this.anims.create({
+            key: 'stand',
+            frames: [ { key: 'bombardier1', frame: 0 } ],
+            frameRate: 20
+        });
+
+            cursors = this.input.keyboard.createCursorKeys();
+
+            this.physics.add.collider(player, bricks);
+        }
+
+        function update() {
+        bomba.anims.play('bomb',true);
+            if (cursors.left.isDown)
+        {
+            player.setVelocityX(-160);
+            player.setVelocityY(0);
+
+            player.anims.play('left', true);
+        }
+        else if (cursors.right.isDown)
+        {
+            player.setVelocityX(160);
+            player.setVelocityY(0);
+
+            player.anims.play('right', true);
+        }
+        else if (cursors.down.isDown)
+        {
+            player.setVelocityY(160);
+            player.setVelocityX(0);
+
+            player.anims.play('down',true);
+        }
+        else if(cursors.up.isDown)
+        {
+            player.setVelocityY(-160);
+            player.setVelocityX(0);
+
+            player.anims.play('up', true);
+        }
+        else{
+            player.setVelocityX(0);
+            player.setVelocityY(0);
+
+            player.anims.play('stand');
+        }
+        }
+
+    </script>
+
+</body>
+
+</html>
