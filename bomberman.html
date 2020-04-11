@@ -18,30 +18,15 @@
     <script type="text/javascript">
 
         var cursors;
-        let blackList = [{
-            x: 48,
-            y: 48
-        },
-        {
-            x: 48,
-            y: 80
-        },
-        {
-            x: 80,
-            y: 48
-        },
-        {
-            x: 688,
-            y: 560
-        },
-        {
-            x: 656,
-            y: 560
-        },
-        {
-            x: 688,
-            y: 528
-        }]
+        let blackList = 
+        [
+        {x: 48,y: 48},
+        {x: 48,y: 80},
+        {x: 80,y: 48},
+        {x: 688,y: 560},
+        {x: 656,y: 560},
+        {x: 688,y: 528}
+        ]
 
         var config = {
             type: Phaser.AUTO,
@@ -60,6 +45,11 @@
             }
         };
 
+        var count=5;
+
+        var player;
+        var bomba;
+        var bricks;
         var game = new Phaser.Game(config);
 
         function preload() {
@@ -87,20 +77,19 @@
         }
 
         function create() {
+            //add ground
             this.add.image(23 * 32 / 2, 19 * 32 / 2, 'ground');
-
-            // this.add.image(48,48,'bombardier1');
-            // this.add.image(48,80,'bombardier2');
 
             bricks = this.physics.add.staticGroup();
 
             //generate destructible brick
-            for(i=0;i<=21;i++)
+            for(i=0;i<=21;i++){
                 for(j=0;j<21;j++)
                     {
                         if(ifPutBlock()&&!(i%2!=0&&j%2!=0)&&checkBlackList(i,j))
                             bricks.create(48+32*i,48+32*j,'destructibleBrick');
                     }
+                }
 
             //draw border
             for (i = 0; i < 19; i++) {
@@ -116,15 +105,19 @@
                 bricks.create(16 + 32 * i, 16 + 18 * 32, 'brick');
             }
 
-            for (i = 0; i <= 19; i += 2)
-                for (j = 0; j <= 23; j += 2)
-                bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, 'brick');
+            for (i = 0; i <= 19; i += 2){
+                for (j = 0; j <= 23; j += 2){
+                    bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, 'brick');
+                }
+            }
 
+            //add player
             player = this.physics.add.sprite(48, 48, 'bombardier1');
 
-            bomba = this.physics.add.sprite(48,80,'bomba');
-
-            player.setCollideWorldBounds(true);
+            //add bomb
+            // bomba = this.physics.add.sprite(48,80,'bomba');
+            
+            // player.setCollideWorldBounds(true);
 
             this.anims.create({
                 key: 'down',
@@ -156,25 +149,55 @@
 
             this.anims.create({
                 key: 'bomb',
-                frames: this.anims.generateFrameNumbers('bomba', { start: 0, end: 2}),
+                frames: this.anims.generateFrameNumbers('bomba', { start: 0, end: 3}),
                 frameRate: 2,
-                repeat: -1
+                repeat: 0
             });
 
             this.anims.create({
-            key: 'stand',
-            frames: [ { key: 'bombardier1', frame: 0 } ],
-            frameRate: 20
-        });
+                key: 'stand',
+                frames: [ { key: 'bombardier1', frame: 0 } ],
+                frameRate: 20
+            });
 
             cursors = this.input.keyboard.createCursorKeys();
 
+            spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+            m = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+
             this.physics.add.collider(player, bricks);
+            // this.physics.add.collider(bomba,player);
+            // this.physics.add.collider(bomba,bricks);
+            // this.physics.add.collider(boms.get().t(),player);
         }
 
         function update() {
-        bomba.anims.play('bomb',true);
-            if (cursors.left.isDown)
+
+        if(Phaser.Input.Keyboard.JustDown(spacebar))
+        {
+            if(count!=0)
+            {
+                let x=Math.floor(player.x/32)*32+16;
+                let y=Math.floor(player.y/32)*32+16;
+
+                //console warning
+                bomba = this.physics.add.sprite(x,y,'bomba');
+                this.physics.add.collider(player,bomba);
+                this.physics.add.collider(bricks,bomba);
+                // bomba.anims.play('bomb',false,true);
+                bomba.anims.play('bomb');
+
+                count--;
+            }
+        }
+
+        if(Phaser.Input.Keyboard.JustDown(m))
+        {
+            bomba.destroy();
+        }
+
+        if (cursors.left.isDown)
         {
             player.setVelocityX(-160);
             player.setVelocityY(0);
