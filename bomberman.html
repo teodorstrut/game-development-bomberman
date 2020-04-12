@@ -1,217 +1,299 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Making your first Phaser 3 Game - Part 3</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
     <style type="text/css">
-        body {
-            padding: 0;
-            margin: 0;
-        }
+      body {
+        padding: 0;
+        margin: 0;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-
+  <body>
     <script type="text/javascript">
-
-        var cursors;
-        let blackList = [{
-            x: 48,
-            y: 48
+      var cursors;
+      var action1;
+      var cursors2;
+      var action2;
+      const blockSize = 32;
+      const blockCenter = 16;
+      let blackList = [
+        {
+          x: 48,
+          y: 48,
         },
         {
-            x: 48,
-            y: 80
+          x: 48,
+          y: 80,
         },
         {
-            x: 80,
-            y: 48
+          x: 80,
+          y: 48,
         },
         {
-            x: 688,
-            y: 560
+          x: 688,
+          y: 560,
         },
         {
-            x: 656,
-            y: 560
+          x: 656,
+          y: 560,
         },
         {
-            x: 688,
-            y: 528
-        }]
-
-        var config = {
-            type: Phaser.AUTO,
-            width: 23 * 32,
-            height: 19 * 32,
-            physics: {
-            default: 'arcade',
-            arcade: {
-                debug: false
-            }
+          x: 688,
+          y: 528,
         },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
-            }
-        };
+      ];
 
-        var game = new Phaser.Game(config);
+      var config = {
+        type: Phaser.AUTO,
+        width: 23 * blockSize,
+        height: 19 * blockSize,
+        physics: {
+          default: "arcade",
+          arcade: {
+            debug: false,
+          },
+        },
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+      };
 
-        function preload() {
-            this.load.image('brick', 'assets/tile1.jpg');
-            this.load.image('ground', 'assets/ground.jpg');
-            this.load.image('destructibleBrick', 'assets/destructibleBrick.jpg');
-            this.load.image('bombardier', 'assets/bombardier.png');
-            this.load.spritesheet('bombardier1', 'assets/bombardier1Sprite.png', { frameWidth: 16, frameHeight: 26 });
-            this.load.spritesheet('bomba', 'assets/bomba.png', { frameWidth: 16, frameHeight: 21 });
-            this.load.image('bombardier2', 'assets/bombardier2.png');
-        }
+      var game = new Phaser.Game(config);
 
-        function ifPutBlock() {
-            if (Math.floor(Math.random() * 10) > 7)
-                return true;
+      function preload() {
+        this.load.image("brick", "assets/tile1.jpg");
+        this.load.image("ground", "assets/ground.jpg");
+        this.load.image("destructibleBrick", "assets/destructibleBrick.jpg");
+        this.load.image("bombardier", "assets/bombardier.png");
+        this.load.spritesheet("bombardier1", "assets/bombardier1Sprite.png", {
+          frameWidth: 16,
+          frameHeight: 26,
+        });
+        this.load.spritesheet("bombardier2", "assets/bombardier1Sprite.png", {
+          frameWidth: 16,
+          frameHeight: 26,
+        });
+        this.load.spritesheet("bomba", "assets/bomba.png", {
+          frameWidth: 16,
+          frameHeight: 21,
+        });
+      }
+
+      function ifPutBlock() {
+        if (Math.floor(Math.random() * 10) > 7) return true;
+        return false;
+      }
+
+      function checkBlackList(x, y) {
+        for (let elem of blackList) {
+          if (elem.x == x * blockSize + 48 && elem.y == y * blockSize + 48)
             return false;
         }
+        return true;
+      }
 
-        function checkBlackList(x,y){
-            for(let elem of blackList){
-                if(elem.x==(x*32+48)&&elem.y==(y*32+48))
-                    return false;
-                }
-            return true;
+      function create() {
+        this.add.image((23 * blockSize) / 2, (19 * blockSize) / 2, "ground");
+
+        // this.add.image(48,48,'bombardier1');
+        // this.add.image(48,80,'bombardier2');
+
+        bricks = this.physics.add.staticGroup();
+
+        //generate destructible brick
+        for (i = 0; i <= 21; i++)
+          for (j = 0; j < 21; j++) {
+            if (
+              ifPutBlock() &&
+              !(i % 2 != 0 && j % 2 != 0) &&
+              checkBlackList(i, j)
+            )
+              bricks.create(
+                48 + blockSize * i,
+                48 + blockSize * j,
+                "destructibleBrick"
+              );
+          }
+
+        //draw borders
+        //x
+        for (i = 0; i < 19; i++) {
+          bricks.create(blockCenter, blockCenter + blockSize * i, "brick");
+          bricks.create(
+            blockCenter + 22 * blockSize,
+            blockCenter + blockSize * i,
+            "brick"
+          );
         }
+        //y
+        for (i = 0; i < 23; i++) {
+          bricks.create(blockCenter + blockSize * i, blockCenter, "brick");
+          bricks.create(
+            blockCenter + blockSize * i,
+            blockCenter + 18 * blockSize,
+            "brick"
+          );
+        }
+        //middle blocks
+        for (i = 0; i <= 19; i += 2)
+          for (j = 0; j <= 23; j += 2)
+            bricks.create(
+              blockCenter + 64 + i * blockSize,
+              blockCenter + 64 + j * blockSize,
+              "brick"
+            );
 
-        function create() {
-            this.add.image(23 * 32 / 2, 19 * 32 / 2, 'ground');
+        player1 = this.physics.add.sprite(48, 48, "bombardier1");
+        player2 = this.physics.add.sprite(688, 560, "bombardier2");
 
-            // this.add.image(48,48,'bombardier1');
-            // this.add.image(48,80,'bombardier2');
+        bomba = this.physics.add.sprite(48, 80, "bomba");
 
-            bricks = this.physics.add.staticGroup();
+        player1.setCollideWorldBounds(true);
+        player2.setCollideWorldBounds(true);
 
-            //generate destructible brick
-            for(i=0;i<=21;i++)
-                for(j=0;j<21;j++)
-                    {
-                        if(ifPutBlock()&&!(i%2!=0&&j%2!=0)&&checkBlackList(i,j))
-                            bricks.create(48+32*i,48+32*j,'destructibleBrick');
-                    }
-
-            //draw border
-            for (i = 0; i < 19; i++) {
-                //x
-                bricks.create(16, 16 + 32 * i, 'brick');
-                bricks.create(16 + 22 * 32, 16 + 32 * i, 'brick');
-            }
-
-            //draw border
-            for (i = 0; i < 23; i++) {
-                //y
-                bricks.create(16 + 32 * i, 16, 'brick');
-                bricks.create(16 + 32 * i, 16 + 18 * 32, 'brick');
-            }
-
-            for (i = 0; i <= 19; i += 2)
-                for (j = 0; j <= 23; j += 2)
-                bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, 'brick');
-
-            player = this.physics.add.sprite(48, 48, 'bombardier1');
-
-            bomba = this.physics.add.sprite(48,80,'bomba');
-
-            player.setCollideWorldBounds(true);
-
-            this.anims.create({
-                key: 'down',
-                frames: this.anims.generateFrameNumbers('bombardier1', { start: 0, end: 2 }),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'up',
-                frames: this.anims.generateFrameNumbers('bombardier1', { start: 3, end: 5 }),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'right',
-                frames: this.anims.generateFrameNumbers('bombardier1', { start: 6, end: 7 }),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'left',
-                frames: this.anims.generateFrameNumbers('bombardier1', { start: 8, end: 9 }),
-                frameRate: 10,
-                repeat: -1
-            });
-
-            this.anims.create({
-                key: 'bomb',
-                frames: this.anims.generateFrameNumbers('bomba', { start: 0, end: 2}),
-                frameRate: 2,
-                repeat: -1
-            });
-
-            this.anims.create({
-            key: 'stand',
-            frames: [ { key: 'bombardier1', frame: 0 } ],
-            frameRate: 20
+        this.anims.create({
+          key: "down",
+          frames: this.anims.generateFrameNumbers("bombardier1", {
+            start: 0,
+            end: 2,
+          }),
+          frameRate: 10,
+          repeat: -1,
         });
 
-            cursors = this.input.keyboard.createCursorKeys();
+        this.anims.create({
+          key: "up",
+          frames: this.anims.generateFrameNumbers("bombardier1", {
+            start: 3,
+            end: 5,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.physics.add.collider(player, bricks);
+        this.anims.create({
+          key: "right",
+          frames: this.anims.generateFrameNumbers("bombardier1", {
+            start: 6,
+            end: 7,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
+
+        this.anims.create({
+          key: "left",
+          frames: this.anims.generateFrameNumbers("bombardier1", {
+            start: 8,
+            end: 9,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
+
+        this.anims.create({
+          key: "bomb",
+          frames: this.anims.generateFrameNumbers("bomba", {
+            start: 0,
+            end: 2,
+          }),
+          frameRate: 2,
+          repeat: -1,
+        });
+
+        this.anims.create({
+          key: "stand",
+          frames: [{ key: "bombardier1", frame: 0 }],
+          frameRate: 20,
+        });
+
+        cursors = this.input.keyboard.createCursorKeys();
+        cursors2 = this.input.keyboard.addKeys({
+          up: Phaser.Input.Keyboard.KeyCodes.W,
+          down: Phaser.Input.Keyboard.KeyCodes.S,
+          left: Phaser.Input.Keyboard.KeyCodes.A,
+          right: Phaser.Input.Keyboard.KeyCodes.D,
+        });
+        actions = this.input.keyboard.addKeys({
+          enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+          f: (action2 = Phaser.Input.Keyboard.KeyCodes.F),
+        });
+
+        this.physics.add.collider(player1, bricks);
+        this.physics.add.collider(player1, player2);
+        this.physics.add.collider(player2, bricks);
+      }
+
+      function update() {
+        bomba.anims.play("bomb", true);
+        if (cursors.left.isDown) {
+          player2.setVelocityX(-120);
+          player2.setVelocityY(0);
+
+          player2.anims.play("left", true);
+        } else if (cursors.right.isDown) {
+          player2.setVelocityX(120);
+          player2.setVelocityY(0);
+
+          player2.anims.play("right", true);
+        } else if (cursors.down.isDown) {
+          player2.setVelocityY(120);
+          player2.setVelocityX(0);
+
+          player2.anims.play("down", true);
+        } else if (cursors.up.isDown) {
+          player2.setVelocityY(-120);
+          player2.setVelocityX(0);
+
+          player2.anims.play("up", true);
+        } else {
+          player2.setVelocityX(0);
+          player2.setVelocityY(0);
+
+          player2.anims.play("stand");
         }
 
-        function update() {
-        bomba.anims.play('bomb',true);
-            if (cursors.left.isDown)
-        {
-            player.setVelocityX(-160);
-            player.setVelocityY(0);
+        if (cursors2.left.isDown) {
+          player1.setVelocityX(-120);
+          player1.setVelocityY(0);
 
-            player.anims.play('left', true);
-        }
-        else if (cursors.right.isDown)
-        {
-            player.setVelocityX(160);
-            player.setVelocityY(0);
+          player1.anims.play("left", true);
+        } else if (cursors2.right.isDown) {
+          player1.setVelocityX(120);
+          player1.setVelocityY(0);
 
-            player.anims.play('right', true);
-        }
-        else if (cursors.down.isDown)
-        {
-            player.setVelocityY(160);
-            player.setVelocityX(0);
+          player1.anims.play("right", true);
+        } else if (cursors2.down.isDown) {
+          player1.setVelocityY(120);
+          player1.setVelocityX(0);
 
-            player.anims.play('down',true);
-        }
-        else if(cursors.up.isDown)
-        {
-            player.setVelocityY(-160);
-            player.setVelocityX(0);
+          player1.anims.play("down", true);
+        } else if (cursors2.up.isDown) {
+          player1.setVelocityY(-120);
+          player1.setVelocityX(0);
 
-            player.anims.play('up', true);
-        }
-        else{
-            player.setVelocityX(0);
-            player.setVelocityY(0);
+          player1.anims.play("up", true);
+        } else {
+          player1.setVelocityX(0);
+          player1.setVelocityY(0);
 
-            player.anims.play('stand');
-        }
+          player1.anims.play("stand");
         }
 
+        if (actions.f.isDown) {
+          console.log("f");
+        }
+
+        if (actions.enter.isDown) {
+          console.log("enter");
+        }
+      }
     </script>
-
-</body>
-
+  </body>
 </html>
