@@ -47,6 +47,11 @@
         },
       ];
 
+      var player1BombExists = false,
+        player2BombExists = false;
+
+      var player1Bomb, player2Bomb;
+
       var config = {
         type: Phaser.AUTO,
         width: 23 * blockSize,
@@ -86,7 +91,7 @@
       }
 
       function ifPutBlock() {
-        if (Math.floor(Math.random() * 10) > 7) return true;
+        if (Math.floor(Math.random() * 10) > 5) return true;
         return false;
       }
 
@@ -100,29 +105,11 @@
 
       function create() {
         this.add.image((23 * blockSize) / 2, (19 * blockSize) / 2, "ground");
-
-        // this.add.image(48,48,'bombardier1');
-        // this.add.image(48,80,'bombardier2');
-
         bricks = this.physics.add.staticGroup();
-
-        //generate destructible brick
-        for (i = 0; i <= 21; i++)
-          for (j = 0; j < 21; j++) {
-            if (
-              ifPutBlock() &&
-              !(i % 2 != 0 && j % 2 != 0) &&
-              checkBlackList(i, j)
-            )
-              bricks.create(
-                48 + blockSize * i,
-                48 + blockSize * j,
-                "destructibleBrick"
-              );
-          }
+        destructibleBricks = this.physics.add.staticGroup();
 
         //draw borders
-        //x
+        //y
         for (i = 0; i < 19; i++) {
           bricks.create(blockCenter, blockCenter + blockSize * i, "brick");
           bricks.create(
@@ -131,8 +118,8 @@
             "brick"
           );
         }
-        //y
-        for (i = 0; i < 23; i++) {
+        //x
+        for (i = 1; i < 22; i++) {
           bricks.create(blockCenter + blockSize * i, blockCenter, "brick");
           bricks.create(
             blockCenter + blockSize * i,
@@ -141,18 +128,32 @@
           );
         }
         //middle blocks
-        for (i = 0; i <= 19; i += 2)
-          for (j = 0; j <= 23; j += 2)
+        for (i = 0; i <= 18; i += 2)
+          for (j = 0; j <= 15; j += 2)
             bricks.create(
               blockCenter + 64 + i * blockSize,
               blockCenter + 64 + j * blockSize,
               "brick"
             );
 
+        //generate destructible brick
+        console.log(bricks.children.entries.length);
+        for (i = 0; i < 21; i++)
+          for (j = 0; j < 17; j++) {
+            if (
+              ifPutBlock() &&
+              !(i % 2 != 0 && j % 2 != 0) &&
+              checkBlackList(i, j)
+            )
+              destructibleBricks.create(
+                48 + blockSize * i,
+                48 + blockSize * j,
+                "destructibleBrick"
+              );
+          }
+
         player1 = this.physics.add.sprite(48, 48, "bombardier1");
         player2 = this.physics.add.sprite(688, 560, "bombardier2");
-
-        bomba = this.physics.add.sprite(48, 80, "bomba");
 
         player1.setCollideWorldBounds(true);
         player2.setCollideWorldBounds(true);
@@ -226,12 +227,13 @@
         });
 
         this.physics.add.collider(player1, bricks);
+        this.physics.add.collider(player1, destructibleBricks);
         this.physics.add.collider(player1, player2);
         this.physics.add.collider(player2, bricks);
+        this.physics.add.collider(player2, destructibleBricks);
       }
 
       function update() {
-        bomba.anims.play("bomb", true);
         if (cursors.left.isDown) {
           player2.setVelocityX(-120);
           player2.setVelocityY(0);
@@ -287,11 +289,65 @@
         }
 
         if (actions.f.isDown) {
-          console.log("f");
+          if (!player1BombExists) {
+            console.log(player1);
+            player1BombExists = true;
+            player1Bomb = this.physics.add.sprite(
+              player1.x - (player1.x % 32) + 16,
+              player1.y - (player1.y % 32) + 16,
+              "bomba"
+            );
+            player1Bomb.anims.play("bomb", true);
+
+            //place bomb + animation
+            setTimeout(explodeBomb, 3000, 1, player1Bomb);
+          }
         }
 
         if (actions.enter.isDown) {
-          console.log("enter");
+          if (!player2BombExists) {
+            player2BombExists = true;
+            player2Bomb = this.physics.add.sprite(
+              player2.x - (player2.x % 32) + 16,
+              player2.y - (player2.y % 32) + 16,
+              "bomba"
+            );
+            player2Bomb.anims.play("bomb", true);
+            //place bomb + animation
+            setTimeout(explodeBomb, 3000, 2, player2Bomb);
+          }
+        }
+
+        function explodeBomb(playerNumber, playerBomb) {
+          playerBomb.destroy();
+          for (let brick of destructibleBricks.children.entries) {
+            if (brick.x === playerBomb.x + 32 && brick.y === playerBomb.y) {
+              brick.destroy();
+            } else if (
+              brick.x === playerBomb.x &&
+              brick.y === playerBomb.y + 32
+            ) {
+              brick.destroy();
+            } else if (
+              brick.x === playerBomb.x - 32 &&
+              brick.y === playerBomb.y
+            ) {
+              brick.destroy();
+            } else if (
+              brick.x === playerBomb.x &&
+              brick.y === playerBomb.y - 32
+            ) {
+              brick.destroy();
+            }
+          }
+
+          if (playerNumber === 1) {
+            player1BombExists = false;
+          }
+          if (playerNumber === 2) {
+            player2BombExists = false;
+          }
+          //remove bomb, bicks and players(if any)
         }
       }
     </script>
