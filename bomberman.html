@@ -1,445 +1,520 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Making your first Phaser 3 Game - Part 3</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
     <style type="text/css">
-        html, body {
-            padding: 0;
-            margin: 0;
-            /* display: flex;
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        /* display: flex;
             justify-content: center;
             align-items: center;
             height: 100%;
             width: 100%;
             background-color: black; */
-        }
+      }
     </style>
-</head>
+  </head>
 
-<body>
-
+  <body>
     <script type="text/javascript">
-        let blackList = 
-        [
-        {x: 48,y: 48},
-        {x: 48,y: 80},
-        {x: 80,y: 48},
-        {x: 688,y: 560},
-        {x: 656,y: 560},
-        {x: 688,y: 528}
-        ]
+      let blackList = [
+        { x: 48, y: 48 },
+        { x: 48, y: 80 },
+        { x: 80, y: 48 },
+        { x: 688, y: 560 },
+        { x: 656, y: 560 },
+        { x: 688, y: 528 },
+      ];
 
-        var config = {
-            type: Phaser.AUTO,
-            width: 736,
-            height: 608,
-            physics: {
-            default: 'arcade',
-            arcade: {
-                debug: false
-            }
+      var config = {
+        type: Phaser.AUTO,
+        width: 736,
+        height: 608,
+        physics: {
+          default: "arcade",
+          arcade: {
+            debug: false,
+          },
         },
-            scene: {
-                preload: preload,
-                create: create,
-                update: update
-            }
-        };
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+      };
+      var floor;
+      var player1ScoreText, player2ScoreText, gameOverText, gameOverText2;
 
-        var player1ScoreText;
-        var player2ScoreText;
+      var score1 = 0;
+      var score2 = 0;
 
-        var score1=0;
-        var score2=0;
+      var player;
+      var player2;
+      var bomb;
+      var bomb1;
+      var explosion;
+      var explosion2;
+      var bricks;
+      var Dbricks;
+      var placeKey;
+      var placeKeyP2;
 
-        var player;
-        var player2;
-        var bomb;
-        var bomb1;
-        var explosion;
-        var explosion2;
-        var bricks;
-        var Dbricks;
-        var placeKey;
-        var placeKeyP2;
+      var cursors;
+      var cursors2;
 
-        var cursors;
-        var cursors2;
+      var wasPlaced = false;
+      var wasPlaced2 = false;
 
-        var wasPlaced=false;
-        var wasPlaced2=false;
+      var game = new Phaser.Game(config);
 
-        var game = new Phaser.Game(config);
+      function preload() {
+        this.load.image("brick", "assets/tile1.jpg");
+        this.load.image("ground", "assets/ground.jpg");
+        this.load.image("Dbrick", "assets/destructibleBrick.jpg");
+        this.load.spritesheet("player", "assets/bombardier1Sprite.png", {
+          frameWidth: 16,
+          frameHeight: 26,
+        });
+        this.load.spritesheet("player2", "assets/bombardier2Sprite.png", {
+          frameWidth: 16,
+          frameHeight: 26,
+        });
+        this.load.spritesheet("bomb", "assets/bomba.png", {
+          frameWidth: 16,
+          frameHeight: 21,
+        });
+        this.load.spritesheet("explosion", "assets/explosion.png", {
+          frameWidth: 32,
+          frameHeight: 32,
+        });
+      }
 
-        function preload() {
-            this.load.image('brick', 'assets/tile1.jpg');
-            this.load.image('ground', 'assets/ground.jpg');
-            this.load.image('Dbrick', 'assets/destructibleBrick.jpg');
-            this.load.spritesheet('player', 'assets/bombardier1Sprite.png', { frameWidth: 16, frameHeight: 26 });
-            this.load.spritesheet('player2', 'assets/bombardier2Sprite.png', { frameWidth: 16, frameHeight: 26 });
-            this.load.spritesheet('bomb', 'assets/bomba.png', { frameWidth: 16, frameHeight: 21 });
-            this.load.spritesheet('explosion', 'assets/explosion.png', {frameWidth:32, frameHeight: 32});
+      function genBlock() {
+        if (Math.floor(Math.random() * 10) > 9) return true;
+        return false;
+      }
+
+      function checkBlackList(x, y) {
+        for (let elem of blackList) {
+          if (elem.x == x * 32 + 48 && elem.y == y * 32 + 48) return false;
+        }
+        return true;
+      }
+
+      function create() {
+        gameOverText = this.add.text(
+          game.config.width / 2 - 200,
+          game.config.height / 2 - 50,
+          "GAME OVER",
+          { fontSize: "32px", fill: "#000", fontStyle: "bold italic" }
+        );
+
+        gameOverText2 = this.add.text(
+          game.config.width / 2 - 150,
+          game.config.height / 2,
+          "GAME OVER",
+          { fontSize: "32px", fill: "#000", fontStyle: "bold italic" }
+        );
+
+        floor = this.add.image(368, 304, "ground");
+
+        //generate destructible brick
+        Dbricks = this.physics.add.staticGroup();
+        for (i = 0; i <= 21; i++) {
+          for (j = 0; j < 21; j++) {
+            if (
+              genBlock() &&
+              !(i % 2 != 0 && j % 2 != 0) &&
+              checkBlackList(i, j)
+            )
+              Dbricks.create(48 + 32 * i, 48 + 32 * j, "Dbrick");
+          }
         }
 
-        function genBlock() {
-            if (Math.floor(Math.random() * 10) > 9)
-                return true;
-            return false;
+        //generate border
+        bricks = this.physics.add.staticGroup();
+        for (i = 0; i < 19; i++) {
+          //x
+          bricks.create(16, 16 + 32 * i, "brick");
+          bricks.create(16 + 22 * 32, 16 + 32 * i, "brick");
+        }
+        for (i = 0; i < 23; i++) {
+          //y
+          bricks.create(16 + 32 * i, 16, "brick");
+          bricks.create(16 + 32 * i, 16 + 18 * 32, "brick");
         }
 
-        function checkBlackList(x,y){
-            for(let elem of blackList){
-                if(elem.x==(x*32+48)&&elem.y==(y*32+48))
-                    return false;
-                }
-            return true;
+        for (i = 0; i <= 19; i += 2) {
+          for (j = 0; j <= 23; j += 2) {
+            bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, "brick");
+          }
         }
 
-        function create() {
-            this.add.image(368, 304, 'ground');
+        this.anims.create({
+          key: "down",
+          frames: this.anims.generateFrameNumbers("player", {
+            start: 0,
+            end: 2,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            //generate destructible brick
-            Dbricks = this.physics.add.staticGroup();
-            for(i=0;i<=21;i++){
-                for(j=0;j<21;j++)
-                    {
-                        if(genBlock()&&!(i%2!=0&&j%2!=0)&&checkBlackList(i,j))
-                        Dbricks.create(48+32*i,48+32*j,'Dbrick');
-                    }
-                }
+        this.anims.create({
+          key: "up",
+          frames: this.anims.generateFrameNumbers("player", {
+            start: 3,
+            end: 5,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            //generate border
-            bricks = this.physics.add.staticGroup();
-            for (i = 0; i < 19; i++) {
-                //x
-                bricks.create(16, 16 + 32 * i, 'brick');
-                bricks.create(16 + 22 * 32, 16 + 32 * i, 'brick');
-            }
-            for (i = 0; i < 23; i++) {
-                //y
-                bricks.create(16 + 32 * i, 16, 'brick');
-                bricks.create(16 + 32 * i, 16 + 18 * 32, 'brick');
-            }
+        this.anims.create({
+          key: "right",
+          frames: this.anims.generateFrameNumbers("player", {
+            start: 6,
+            end: 7,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            for (i = 0; i <= 19; i += 2){
-                for (j = 0; j <= 23; j += 2){
-                    bricks.create(16 + 64 + i * 32, 16 + 64 + j * 32, 'brick');
-                }
-            }
+        this.anims.create({
+          key: "left",
+          frames: this.anims.generateFrameNumbers("player", {
+            start: 8,
+            end: 9,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'down',
-                frames: this.anims.generateFrameNumbers('player', { start: 0, end: 2 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "downP2",
+          frames: this.anims.generateFrameNumbers("player2", {
+            start: 0,
+            end: 2,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'up',
-                frames: this.anims.generateFrameNumbers('player', { start: 3, end: 5 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "upP2",
+          frames: this.anims.generateFrameNumbers("player2", {
+            start: 3,
+            end: 5,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'right',
-                frames: this.anims.generateFrameNumbers('player', { start: 6, end: 7 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "rightP2",
+          frames: this.anims.generateFrameNumbers("player2", {
+            start: 6,
+            end: 7,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'left',
-                frames: this.anims.generateFrameNumbers('player', { start: 8, end: 9 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "leftP2",
+          frames: this.anims.generateFrameNumbers("player2", {
+            start: 8,
+            end: 9,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'downP2',
-                frames: this.anims.generateFrameNumbers('player2', { start: 0, end: 2 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "standP2",
+          frames: [{ key: "player2", frame: 0 }],
+          frameRate: 20,
+        });
 
-            this.anims.create({
-                key: 'upP2',
-                frames: this.anims.generateFrameNumbers('player2', { start: 3, end: 5 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "placeBomb",
+          frames: this.anims.generateFrameNumbers("bomb", { start: 0, end: 2 }),
+          frameRate: 2,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'rightP2',
-                frames: this.anims.generateFrameNumbers('player2', { start: 6, end: 7 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "explode",
+          frames: this.anims.generateFrameNumbers("explosion", {
+            start: 0,
+            end: 2,
+          }),
+          frameRate: 5,
+          repeat: -1,
+        });
 
-            this.anims.create({
-                key: 'leftP2',
-                frames: this.anims.generateFrameNumbers('player2', { start: 8, end: 9 }),
-                frameRate: 10,
-                repeat: -1
-            });
+        this.anims.create({
+          key: "stand",
+          frames: [{ key: "player", frame: 0 }],
+          frameRate: 20,
+        });
 
-            this.anims.create({
-                key: 'standP2',
-                frames: [ { key: 'player2', frame: 0 } ],
-                frameRate: 20
-            });
+        //add player
+        player = this.physics.add.sprite(48, 48, "player");
 
-            this.anims.create({
-                key: 'placeBomb',
-                frames: this.anims.generateFrameNumbers('bomb', { start: 0, end: 2}),
-                frameRate: 2,
-                repeat: -1
-            });
+        player2 = this.physics.add.sprite(688, 560, "player2");
 
-            this.anims.create({
-                key: 'explode',
-                frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 2}),
-                frameRate: 5,
-                repeat: -1
-            });
+        bomb = this.physics.add.staticGroup();
 
-            this.anims.create({
-                key: 'stand',
-                frames: [ { key: 'player', frame: 0 } ],
-                frameRate: 20
-            });
+        explosion = this.physics.add.staticGroup();
 
-            //add player
-            player = this.physics.add.sprite(48, 48, 'player');
+        explosion2 = this.physics.add.staticGroup();
 
-            player2 = this.physics.add.sprite(688, 560, 'player2');
+        cursors2 = this.input.keyboard.createCursorKeys();
 
-            bomb=this.physics.add.staticGroup();
+        cursors = this.input.keyboard.addKeys({
+          up: Phaser.Input.Keyboard.KeyCodes.W,
+          down: Phaser.Input.Keyboard.KeyCodes.S,
+          left: Phaser.Input.Keyboard.KeyCodes.A,
+          right: Phaser.Input.Keyboard.KeyCodes.D,
+        });
 
-            explosion= this.physics.add.staticGroup();
+        placeKey = this.input.keyboard.addKey(
+          Phaser.Input.Keyboard.KeyCodes.SPACE
+        );
 
-            explosion2= this.physics.add.staticGroup();
+        placeKey2 = this.input.keyboard.addKey(
+          Phaser.Input.Keyboard.KeyCodes.ENTER
+        );
 
-            cursors = this.input.keyboard.createCursorKeys();
+        this.physics.add.overlap(explosion, Dbricks, function (
+          explosion,
+          brick
+        ) {
+          score1 += 10;
+          brick.destroy();
+        });
 
-            cursors2 = this.input.keyboard.addKeys({
-                up: Phaser.Input.Keyboard.KeyCodes.W,
-                down: Phaser.Input.Keyboard.KeyCodes.S,
-                left: Phaser.Input.Keyboard.KeyCodes.A,
-                right: Phaser.Input.Keyboard.KeyCodes.D,
-            });
+        this.physics.add.overlap(explosion2, Dbricks, function (
+          explosion,
+          brick
+        ) {
+          score2 += 10;
+          brick.destroy();
+        });
 
-            placeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.physics.add.overlap(explosion, player, function (
+          explosion,
+          playe
+        ) {
+          player.setPosition(-10, -10);
+          player.setVisible(false);
+          floor.setDepth(1);
+          gameOverText.setText("GAME OVER: Player2 Won!");
+          gameOverText.setDepth(2);
+          gameOverText2.setText("Click To Retry");
+          gameOverText2.setDepth(2);
+          window.addEventListener("click", function () {
+            window.location.reload();
+          });
+        });
 
-            placeKey2 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+        this.physics.add.overlap(explosion2, player, function (
+          explosion,
+          playe
+        ) {
+          score2 += 100;
+          player.setPosition(-10, -10);
+          player.setVisible(false);
+          floor.setDepth(1);
+          gameOverText.setText("GAME OVER: Player2 Won!");
+          gameOverText.setDepth(2);
+          gameOverText2.setText("Click To Retry");
+          gameOverText2.setDepth(2);
+          window.addEventListener("click", function () {
+            window.location.reload();
+          });
+        });
 
-            this.physics.add.overlap(explosion, Dbricks, function(explosion, brick)
-            {
-                score1+=10;
-                brick.destroy();
-            });
+        this.physics.add.overlap(explosion2, player2, function (
+          explosion,
+          playe
+        ) {
+          player2.setPosition(-10, -10);
+          player2.setVisible(false);
+          floor.setDepth(1);
+          gameOverText.setText("GAME OVER: Player1 Won!");
+          gameOverText.setDepth(1);
+          gameOverText2.setText("Click To Retry");
+          gameOverText2.setDepth(1);
+          window.addEventListener("click", function () {
+            window.location.reload();
+          });
+        });
 
-            this.physics.add.overlap(explosion2, Dbricks, function(explosion, brick)
-            {
-                score2+=10;
-                brick.destroy();
-            });
+        this.physics.add.overlap(explosion, player2, function (
+          explosion,
+          playe
+        ) {
+          score1 += 100;
+          player2.setPosition(-10, -10);
+          player2.setVisible(false);
+          floor.setDepth(1);
+          gameOverText.setText("GAME OVER: Player1 Won!");
+          gameOverText.setDepth(1);
+          gameOverText2.setText("Click To Retry");
+          gameOverText2.setDepth(1);
+          window.addEventListener("click", function () {
+            window.location.reload();
+          });
+        });
 
-            this.physics.add.overlap(explosion, player, function(explosion, playe)
-            {
-                player.setPosition(-10,-10);
-                player.setVisible(false);
-            });
+        this.physics.add.collider(player, bricks);
+        this.physics.add.collider(player2, bricks);
+        this.physics.add.collider(player, Dbricks);
+        this.physics.add.collider(player2, Dbricks);
+        this.physics.add.collider(player, bomb);
+        this.physics.add.collider(player2, bomb);
+        this.physics.add.collider(player, player2);
 
-            this.physics.add.overlap(explosion2, player, function(explosion, playe)
-            {
-                score2+=100;
-                player.setPosition(-10,-10);
-                player.setVisible(false);
-            });
+        player1ScoreText = this.add.text(5, 5, "Player1 score: 0", {
+          fontStyle: "bold italic",
+          fontSize: "24px",
+          fill: "black",
+        });
+        player2ScoreText = this.add.text(550, 5, "Player2 score: 0", {
+          fontStyle: "bold italic",
+          fontSize: "24px",
+          fill: "black",
+        });
+      }
 
-            this.physics.add.overlap(explosion2, player2, function(explosion, playe)
-            {
-                player2.setPosition(-10,-10);
-                player2.setVisible(false);
-            });
+      function destroyExplosion(explosions) {
+        while (explosions.children.entries.length > 0) {
+          explosions.getFirstAlive().destroy();
+        }
+      }
 
-            this.physics.add.overlap(explosion, player2, function(explosion, playe)
-            {
-                score1+=100;
-                player2.setPosition(-10,-10);
-                player2.setVisible(false);
-            });
+      function update() {
+        player1ScoreText.setText("Player1: " + score1);
+        player2ScoreText.setText("Player2: " + score2);
 
-            this.physics.add.collider(player, bricks);
-            this.physics.add.collider(player2, bricks);
-            this.physics.add.collider(player, Dbricks);
-            this.physics.add.collider(player2, Dbricks);
-            this.physics.add.collider(player,bomb);
-            this.physics.add.collider(player2,bomb);
-            this.physics.add.collider(player,player2);
+        if (Phaser.Input.Keyboard.JustDown(placeKey)) {
+          if (!wasPlaced) {
+            let x = Math.floor(player.x / 32) * 32 + 16;
+            let y = Math.floor(player.y / 32) * 32 + 16;
 
-            player1ScoreText = this.add.text(5, 5, 'Player1 score: 0', { fontStyle: 'bold italic', fontSize: '24px', fill: 'black' });
-            player2ScoreText = this.add.text(550, 5, 'Player2 score: 0', { fontStyle: 'bold italic', fontSize: '24px', fill: 'black' });
+            bomb.create(x, y, "bomb");
+            bomb.playAnimation("placeBomb", 0);
+
+            wasPlaced = true;
+            setTimeout(function () {
+              let gameObject = bomb.getFirstAlive();
+              if (gameObject) {
+                explosion.create(gameObject.x, gameObject.y, "explosion");
+                explosion.create(gameObject.x + 32, gameObject.y, "explosion");
+                explosion.create(gameObject.x - 32, gameObject.y, "explosion");
+                explosion.create(gameObject.x, gameObject.y + 32, "explosion");
+                explosion.create(gameObject.x, gameObject.y - 32, "explosion");
+
+                explosion.playAnimation("explode", 0);
+
+                gameObject.destroy();
+                wasPlaced = false;
+
+                setTimeout(destroyExplosion, 1000, explosion);
+              }
+            }, 3000);
+          }
         }
 
-        function destroyExplosion(explosions)
-        {
-            while(explosions.children.entries.length>0)
-            {
-                explosions.getFirstAlive().destroy();
-            }
+        if (Phaser.Input.Keyboard.JustDown(placeKey2)) {
+          if (!wasPlaced2) {
+            let x = Math.floor(player2.x / 32) * 32 + 16;
+            let y = Math.floor(player2.y / 32) * 32 + 16;
+
+            bomb.create(x, y, "bomb");
+            bomb.playAnimation("placeBomb", 0);
+
+            wasPlaced2 = true;
+            setTimeout(function () {
+              let gameObject = bomb.getFirstAlive();
+              if (gameObject) {
+                explosion2.create(gameObject.x, gameObject.y, "explosion");
+                explosion2.create(gameObject.x + 32, gameObject.y, "explosion");
+                explosion2.create(gameObject.x - 32, gameObject.y, "explosion");
+                explosion2.create(gameObject.x, gameObject.y + 32, "explosion");
+                explosion2.create(gameObject.x, gameObject.y - 32, "explosion");
+
+                explosion2.playAnimation("explode", 0);
+
+                gameObject.destroy();
+                wasPlaced2 = false;
+
+                setTimeout(destroyExplosion, 1000, explosion2);
+              }
+            }, 3000);
+          }
         }
 
-        function update() {
+        if (cursors.left.isDown) {
+          player.setVelocityX(-160);
+          player.setVelocityY(0);
 
-        player1ScoreText.setText('Player1: ' + score1);
-        player2ScoreText.setText('Player2: ' + score2);
+          player.anims.play("left", true);
+        } else if (cursors.right.isDown) {
+          player.setVelocityX(160);
+          player.setVelocityY(0);
 
-        if(Phaser.Input.Keyboard.JustDown(placeKey))
-        {
-            if(!wasPlaced)
-            {
-                let x=Math.floor(player.x/32)*32+16;
-                let y=Math.floor(player.y/32)*32+16;
+          player.anims.play("right", true);
+        } else if (cursors.down.isDown) {
+          player.setVelocityY(160);
+          player.setVelocityX(0);
 
-                bomb.create(x,y,'bomb');
-                bomb.playAnimation('placeBomb', 0);
+          player.anims.play("down", true);
+        } else if (cursors.up.isDown) {
+          player.setVelocityY(-160);
+          player.setVelocityX(0);
 
-                wasPlaced=true;
-                setTimeout(function()
-                {
-                    let gameObject = bomb.getFirstAlive();
-                    if(gameObject)
-                    {
-                        explosion.create(gameObject.x,gameObject.y,'explosion');
-                        explosion.create(gameObject.x+32,gameObject.y,'explosion');
-                        explosion.create(gameObject.x-32,gameObject.y,'explosion');
-                        explosion.create(gameObject.x,gameObject.y+32,'explosion');
-                        explosion.create(gameObject.x,gameObject.y-32,'explosion');
-                        
+          player.anims.play("up", true);
+        } else {
+          player.setVelocityX(0);
+          player.setVelocityY(0);
 
-                        explosion.playAnimation('explode',0);
-                    
-                        gameObject.destroy();
-                        wasPlaced=false;
-
-                        setTimeout(destroyExplosion, 1000,explosion);
-                    }
-                }, 3000);
-            }
+          player.anims.play("stand");
         }
 
-        if(Phaser.Input.Keyboard.JustDown(placeKey2))
-        {
-            if(!wasPlaced2)
-            {
-                let x=Math.floor(player2.x/32)*32+16;
-                let y=Math.floor(player2.y/32)*32+16;
+        if (cursors2.left.isDown) {
+          player2.setVelocityX(-160);
+          player2.setVelocityY(0);
 
-                bomb.create(x,y,'bomb');
-                bomb.playAnimation('placeBomb', 0);
+          player2.anims.play("leftP2", true);
+        } else if (cursors2.right.isDown) {
+          player2.setVelocityX(160);
+          player2.setVelocityY(0);
 
-                wasPlaced2=true;
-                setTimeout(function()
-                {
-                    let gameObject = bomb.getFirstAlive();
-                    if(gameObject)
-                    {
-                        explosion2.create(gameObject.x,gameObject.y,'explosion');
-                        explosion2.create(gameObject.x+32,gameObject.y,'explosion');
-                        explosion2.create(gameObject.x-32,gameObject.y,'explosion');
-                        explosion2.create(gameObject.x,gameObject.y+32,'explosion');
-                        explosion2.create(gameObject.x,gameObject.y-32,'explosion');
-                        
+          player2.anims.play("rightP2", true);
+        } else if (cursors2.down.isDown) {
+          player2.setVelocityY(160);
+          player2.setVelocityX(0);
 
-                        explosion2.playAnimation('explode',0);
-                    
-                        gameObject.destroy();
-                        wasPlaced2=false;
+          player2.anims.play("downP2", true);
+        } else if (cursors2.up.isDown) {
+          player2.setVelocityY(-160);
+          player2.setVelocityX(0);
 
-                        setTimeout(destroyExplosion, 1000,explosion2);
-                    }
-                }, 3000);
-            }
+          player2.anims.play("upP2", true);
+        } else {
+          player2.setVelocityX(0);
+          player2.setVelocityY(0);
+
+          player2.anims.play("standP2");
         }
-
-        if (cursors.left.isDown)
-        {
-            player.setVelocityX(-160);
-            player.setVelocityY(0);
-
-            player.anims.play('left', true);
-        }
-        else if (cursors.right.isDown)
-        {
-            player.setVelocityX(160);
-            player.setVelocityY(0);
-
-            player.anims.play('right', true);
-        }
-        else if (cursors.down.isDown)
-        {
-            player.setVelocityY(160);
-            player.setVelocityX(0);
-
-            player.anims.play('down',true);
-        }
-        else if(cursors.up.isDown)
-        {
-            player.setVelocityY(-160);
-            player.setVelocityX(0);
-
-            player.anims.play('up', true);
-        }
-        else{
-            player.setVelocityX(0);
-            player.setVelocityY(0);
-
-            player.anims.play('stand');
-        }
-
-        if (cursors2.left.isDown)
-        {
-            player2.setVelocityX(-160);
-            player2.setVelocityY(0);
-
-            player2.anims.play('leftP2', true);
-        }
-        else if (cursors2.right.isDown)
-        {
-            player2.setVelocityX(160);
-            player2.setVelocityY(0);
-
-            player2.anims.play('rightP2', true);
-        }
-        else if (cursors2.down.isDown)
-        {
-            player2.setVelocityY(160);
-            player2.setVelocityX(0);
-
-            player2.anims.play('downP2',true);
-        }
-        else if(cursors2.up.isDown)
-        {
-            player2.setVelocityY(-160);
-            player2.setVelocityX(0);
-
-            player2.anims.play('upP2', true);
-        }
-        else{
-            player2.setVelocityX(0);
-            player2.setVelocityY(0);
-
-            player2.anims.play('standP2');
-        }
-    }
-
+      }
     </script>
-
-</body>
-
+  </body>
 </html>
